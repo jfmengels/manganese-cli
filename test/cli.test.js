@@ -25,6 +25,18 @@ describe('cli', function() {
             cli.printError.restore();
         });
 
+        it('should print an error when no sub-command is specified', function (done) {
+            const args = mockArgsForDispatch();
+            var expectedError = 'no manganese command is specified. See \'manganese --help\'';
+            cli.dispatch(args)
+            .catch(function(error) {
+                expect(error.message).to.equal(expectedError);
+                expect(printErrorStub.callCount).to.equal(1);
+                expect(printErrorStub.getCall(0).args[0].message).to.equal(expectedError);
+                done();
+            })
+            .catch(done);
+        });
 
         it('should print an error when the sub-command does not exist', function (done) {
             const args = mockArgsForDispatch('unknown-command with some arguments');
