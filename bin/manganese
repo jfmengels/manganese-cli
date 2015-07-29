@@ -1,0 +1,10 @@
+#!/usr/bin/env node
+'use strict';
+
+var iojs = require('is-iojs');
+
+if (!iojs) {
+  require('babel/register')({ ignore: /manganese\/node_modules/ });
+}
+
+require('../lib/cli').dispatch(process.argv);
