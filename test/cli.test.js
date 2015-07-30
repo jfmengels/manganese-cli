@@ -52,20 +52,39 @@ describe('cli', function() {
         });
 
         it('should dispatch to existing subcommand', function(done) {
-            const args = mockArgsForDispatch('download series1 120 -p some-plugin');
+            const args = mockArgsForDispatch('download series1 120 --plugin some-plugin');
             cli.dispatch(args).then(function() {
-                expect(downloadStub).to.be.calledWith(
-                    ['series1', 120], {
-                        p: 'some-plugin'
-                    }
-                );
+                var calledArgs = downloadStub.getCall(0).args;
+                expect(calledArgs[0]).to.deep.equal(['series1', 120]);
+                expect(calledArgs[1].plugin).to.equal('some-plugin');
+                done();
+            })
+            .catch(done);
+        });
+
+        it('should have default values for the config', function(done) {
+            const args = mockArgsForDispatch('download series1 120');
+            cli.dispatch(args).then(function() {
+                var options = downloadStub.getCall(0).args[1];
+                expect(options.destFolder).to.be.a('string');
+                done();
+            })
+            .catch(done);
+        });
+
+        it('should have aliases for the config', function(done) {
+            const args = mockArgsForDispatch('download series1 120 -n name1 -p plugin1');
+            cli.dispatch(args).then(function() {
+                var options = downloadStub.getCall(0).args[1];
+                expect(options.name).to.equal('name1');
+                expect(options.plugin).to.equal('plugin1');
                 done();
             })
             .catch(done);
         });
 
         it('should print error when subCommand fails', function(done) {
-            const args = mockArgsForDispatch('download series1 120 -p some-plugin');
+            const args = mockArgsForDispatch('download series1 120 --plugin some-plugin');
             const expectedError = new Error('some error');
 
             cli.subCommands.download.restore();
