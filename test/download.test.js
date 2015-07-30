@@ -2,6 +2,7 @@
 
 import sinon from 'sinon';
 import {expect} from 'chai';
+import ranger from 'number-ranger';
 
 import * as download from '../lib/download';
 
@@ -9,10 +10,19 @@ import {mockArgs} from './utils';
 
 describe('download', function() {
     var downloadAsyncStub;
+    var rangerParseStub;
     var options;
 
     beforeEach(function() {
         downloadAsyncStub = sinon.stub(download, 'downloadAsync').resolves();
+        rangerParseStub = sinon.stub(ranger, 'parse');
+        rangerParseStub.withArgs('120').returns([{
+            start: 120
+        }]);
+        rangerParseStub.withArgs('100:140').returns([{
+            start: 100,
+            end: 140
+        }]);
         options = {
             plugin: 'some-plugin'
         };
@@ -20,6 +30,7 @@ describe('download', function() {
 
     afterEach(function() {
         download.downloadAsync.restore();
+        ranger.parse.restore();
     });
 
     it('should reject when args is empty', function(done) {
@@ -79,11 +90,16 @@ describe('download', function() {
             expect(calledArgs[0]).to.deep.equal([{
                 plugin: 'some-plugin',
                 series: 'series1',
-                chapters: '120'
+                chapters: [{
+                    start: 120
+                }]
             }, {
                 plugin: 'some-plugin',
                 series: 'series2',
-                chapters: '100:140'
+                chapters: [{
+                    start: 100,
+                    end: 140
+                }]
             }]);
             expect(calledArgs[1]).to.deep.equal(options);
             done();
