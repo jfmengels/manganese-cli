@@ -52,15 +52,26 @@ describe('cli', function() {
         });
 
         it('should dispatch to existing subcommand', function(done) {
-            const args = mockArgsForDispatch('download series1 120 --plugin some-plugin');
+            const args = mockArgsForDispatch('download series1 --plugin some-plugin');
             cli.dispatch(args).then(function() {
                 var calledArgs = downloadStub.getCall(0).args;
-                expect(calledArgs[0]).to.deep.equal(['series1', 120]);
+                expect(calledArgs[0]).to.deep.equal(['series1']);
                 expect(calledArgs[1].plugin).to.equal('some-plugin');
                 done();
             })
             .catch(done);
         });
+
+        it('should not interpret numbers', function(done) {
+            const args = mockArgsForDispatch('download series1 120');
+            cli.dispatch(args).then(function() {
+                var calledArgs = downloadStub.getCall(0).args;
+                expect(calledArgs[0]).to.deep.equal(['series1', '120']);
+                done();
+            })
+            .catch(done);
+        });
+
 
         it('should have default values for the config', function(done) {
             const args = mockArgsForDispatch('download series1 120');
