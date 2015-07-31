@@ -1,11 +1,8 @@
 'use strict';
 
 import sinon from 'sinon';
-import chai from 'chai';
-import sinonChai from 'sinon-chai';
+import {expect} from 'chai';
 import 'sinon-as-promised';
-chai.use(sinonChai);
-const expect = chai.expect;
 
 import * as cli from '../lib/cli';
 import {mockArgsForDispatch} from './utils';
