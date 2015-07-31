@@ -10,7 +10,7 @@ import {mockArgsForDispatch} from './utils';
 describe('cli', function() {
 
     describe('dispatch', function() {
-        var downloadStub, printErrorStub;
+        let downloadStub, printErrorStub;
 
         beforeEach(function() {
             downloadStub = sinon.stub(cli.subCommands.download, 'parseArgs').resolves();
@@ -24,7 +24,7 @@ describe('cli', function() {
 
         it('should print an error when no sub-command is specified', function (done) {
             const args = mockArgsForDispatch();
-            var expectedError = 'no manganese command is specified. See \'manganese --help\'';
+            let expectedError = 'no manganese command is specified. See \'manganese --help\'';
             cli.dispatch(args)
             .catch(function(error) {
                 expect(error.message).to.equal(expectedError);
@@ -37,7 +37,7 @@ describe('cli', function() {
 
         it('should print an error when the sub-command does not exist', function (done) {
             const args = mockArgsForDispatch('unknown-command with some arguments');
-            var expectedError = 'unknown-command is not a manganese command. See \'manganese --help\'';
+            let expectedError = 'unknown-command is not a manganese command. See \'manganese --help\'';
             cli.dispatch(args)
             .catch(function(error) {
                 expect(error.message).to.equal(expectedError);
@@ -51,7 +51,7 @@ describe('cli', function() {
         it('should dispatch to existing subcommand', function(done) {
             const args = mockArgsForDispatch('download series1 --plugin some-plugin');
             cli.dispatch(args).then(function() {
-                var calledArgs = downloadStub.getCall(0).args;
+                let calledArgs = downloadStub.getCall(0).args;
                 expect(calledArgs[0]).to.deep.equal(['series1']);
                 expect(calledArgs[1].plugin).to.equal('some-plugin');
                 done();
@@ -62,7 +62,7 @@ describe('cli', function() {
         it('should not interpret numbers', function(done) {
             const args = mockArgsForDispatch('download series1 120');
             cli.dispatch(args).then(function() {
-                var calledArgs = downloadStub.getCall(0).args;
+                let calledArgs = downloadStub.getCall(0).args;
                 expect(calledArgs[0]).to.deep.equal(['series1', '120']);
                 done();
             })
@@ -73,7 +73,7 @@ describe('cli', function() {
         it('should have default values for the config', function(done) {
             const args = mockArgsForDispatch('download series1 120');
             cli.dispatch(args).then(function() {
-                var options = downloadStub.getCall(0).args[1];
+                let options = downloadStub.getCall(0).args[1];
                 expect(options.destFolder).to.be.a('string');
                 done();
             })
@@ -83,7 +83,7 @@ describe('cli', function() {
         it('should have aliases for the config', function(done) {
             const args = mockArgsForDispatch('download series1 120 -n name1 -p plugin1');
             cli.dispatch(args).then(function() {
-                var options = downloadStub.getCall(0).args[1];
+                let options = downloadStub.getCall(0).args[1];
                 expect(options.name).to.equal('name1');
                 expect(options.plugin).to.equal('plugin1');
                 done();
@@ -111,7 +111,7 @@ describe('cli', function() {
     });
 
     describe('printError', function() {
-        var consoleErrorStub;
+        let consoleErrorStub;
 
         beforeEach(function() {
             consoleErrorStub = sinon.stub(console, 'error');

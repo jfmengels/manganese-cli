@@ -10,9 +10,9 @@ import {mockArgs} from './utils';
 
 describe('download', function() {
     describe('parseArgs', function() {
-        var downloadAsyncStub;
-        var rangerParseStub;
-        var options;
+        let downloadAsyncStub;
+        let rangerParseStub;
+        let options;
 
         beforeEach(function() {
             downloadAsyncStub = sinon.stub(download, 'downloadAsync').resolves();
