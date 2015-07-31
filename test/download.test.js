@@ -1,5 +1,8 @@
 'use strict';
 
+/*eslint no-unused-expressions:0*/
+// --> allows expressions like: "expect(...).to.exist;"
+
 import sinon from 'sinon';
 import {expect} from 'chai';
 import ranger from 'number-ranger';
@@ -7,11 +10,11 @@ import ranger from 'number-ranger';
 import * as download from '../lib/download';
 
 import {mockArgs} from './utils';
+import * as logging from '../lib/logging';
 
 describe('download', function() {
     describe('parseArgs', function() {
-        let downloadAsyncStub;
-        let rangerParseStub;
+        let downloadAsyncStub, rangerParseStub, printProgressStub;
         let options;
 
         beforeEach(function() {
@@ -24,6 +27,7 @@ describe('download', function() {
                 start: 100,
                 end: 140
             }]);
+            printProgressStub = sinon.stub(download, 'printProgress');
             options = {
                 plugin: 'some-plugin'
             };
@@ -31,6 +35,7 @@ describe('download', function() {
 
         afterEach(function() {
             download.downloadAsync.restore();
+            download.printProgress.restore();
             ranger.parse.restore();
         });
 
@@ -108,6 +113,51 @@ describe('download', function() {
             .catch(done);
         });
 
+        it('should call downloadAsync with a job and parsed chapter range', function(done) {
+            const args = mockArgs('series1 120 series2 100:140');
+            download.parseArgs(args, options)
+            .then(function() {
+                expect(downloadAsyncStub.callCount).to.equal(1);
+                const calledArgs = downloadAsyncStub.getCall(0).args;
+                expect(calledArgs[0]).to.deep.equal([{
+                    plugin: 'some-plugin',
+                    series: 'series1',
+                    chapters: [{
+                        start: 120
+                    }]
+                }, {
+                    plugin: 'some-plugin',
+                    series: 'series2',
+                    chapters: [{
+                        start: 100,
+                        end: 140
+                    }]
+                }]);
+                expect(calledArgs[1]).to.deep.equal(options);
+                done();
+            })
+            .catch(done);
+        });
+
+        it('should call downloadAsync with download.printProgress, bound with the options', function(done) {
+            const args = mockArgs('series1 120 series2 100:140');
+            download.parseArgs(args, options)
+            .then(function() {
+                expect(downloadAsyncStub.callCount).to.equal(1);
+                const printProgress = downloadAsyncStub.getCall(0).args[2];
+                expect(printProgress).to.exist;
+
+                // Check if it was bound to the options
+                expect(printProgressStub.callCount).to.equal(0);
+                expect(printProgress).to.exist;
+                printProgress();
+                expect(printProgressStub.callCount).to.equal(1);
+                expect(printProgressStub.getCall(0).args[0]).to.deep.equal(options);
+                done();
+            })
+            .catch(done);
+        });
+
         it('should have field "name" set when options.name is defined', function(done) {
             const args = mockArgs('series1 120');
             options.name = 'some-name';
@@ -141,6 +191,78 @@ describe('download', function() {
                 done();
             })
             .catch(done);
+        });
+    });
+
+    describe('printProgress', function() {
+        let logStub, logErrorStub;
+        let options, job;
+
+        beforeEach(function() {
+             logStub = sinon.stub(logging, 'log');
+             logErrorStub = sinon.stub(logging, 'logError');
+             options = {
+                verbose: 'normal'
+             };
+             job = {
+                name: 'some-name',
+                chapter: '123'
+             };
+        });
+
+        afterEach(function() {
+            logging.log.restore();
+            logging.logError.restore();
+        });
+
+        it('should log an error message when given an error (Error)', function() {
+            var expectedError = new Error('some error sent to printProgress');
+            download.printProgress(options, expectedError, 'error', job);
+            expect(logStub.callCount).to.equal(0);
+            expect(logErrorStub.callCount).to.equal(1);
+
+            const args = logErrorStub.getCall(0).args;
+            expect(args[0]).to.deep.equal(options);
+            expect(args[1].message).to.equal('error when downloading some-name 123: ' + expectedError.message);
+        });
+
+        it('should log an error message when given an error (string)', function() {
+            var expectedError = 'some error sent to printProgress';
+            download.printProgress(options, expectedError, 'error', job);
+            expect(logStub.callCount).to.equal(0);
+            expect(logErrorStub.callCount).to.equal(1);
+
+            const args = logErrorStub.getCall(0).args;
+            expect(args[0]).to.deep.equal(options);
+            expect(args[1].message).to.equal('error when downloading some-name 123: ' + expectedError);
+        });
+
+        it('should log when a job starts', function() {
+            download.printProgress(options, null, 'start', job);
+            expect(logErrorStub.callCount).to.equal(0);
+            expect(logStub.callCount).to.equal(1);
+
+            const args = logStub.getCall(0).args;
+            expect(args[0]).to.deep.equal(options);
+            expect(args[1].level).to.equal('normal');
+            expect(args[1].message).to.equal('started download of some-name 123');
+        });
+
+        it('should log when a job ends', function() {
+            download.printProgress(options, null, 'end', job);
+            expect(logErrorStub.callCount).to.equal(0);
+            expect(logStub.callCount).to.equal(1);
+
+            const args = logStub.getCall(0).args;
+            expect(args[0]).to.deep.equal(options);
+            expect(args[1].level).to.equal('normal');
+            expect(args[1].message).to.equal('ended download of some-name 123');
+        });
+
+        it('should not log anything when the type is unknown', function() {
+            download.printProgress(options, null, 'some-unknown-type', job);
+            expect(logErrorStub.callCount).to.equal(0);
+            expect(logStub.callCount).to.equal(0);
         });
     });
 });
