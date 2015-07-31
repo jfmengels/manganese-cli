@@ -13,12 +13,12 @@ describe('cli', function() {
         var downloadStub, printErrorStub;
 
         beforeEach(function() {
-            downloadStub = sinon.stub(cli.subCommands, 'download').resolves();
+            downloadStub = sinon.stub(cli.subCommands.download, 'parseArgs').resolves();
             printErrorStub = sinon.stub(cli, 'printError');
         });
 
         afterEach(function() {
-            cli.subCommands.download.restore();
+            cli.subCommands.download.parseArgs.restore();
             cli.printError.restore();
         });
 
@@ -95,8 +95,8 @@ describe('cli', function() {
             const args = mockArgsForDispatch('download series1 120 --plugin some-plugin');
             const expectedError = new Error('some error');
 
-            cli.subCommands.download.restore();
-            downloadStub = sinon.stub(cli.subCommands, 'download');
+            cli.subCommands.download.parseArgs.restore();
+            downloadStub = sinon.stub(cli.subCommands.download, 'parseArgs');
             downloadStub.rejects(expectedError);
 
             cli.dispatch(args)
