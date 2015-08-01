@@ -6,6 +6,7 @@
 import sinon from 'sinon';
 import {expect} from 'chai';
 import ranger from 'number-ranger';
+import core from 'manganese';
 
 import * as download from '../lib/download';
 
@@ -14,11 +15,11 @@ import * as logging from '../lib/logging';
 
 describe('download', function() {
     describe('parseArgs', function() {
-        let downloadAsyncStub, rangerParseStub, printProgressStub;
+        let callCoreStub, rangerParseStub, printProgressStub;
         let options;
 
         beforeEach(function() {
-            downloadAsyncStub = sinon.stub(download, 'downloadAsync').resolves();
+            callCoreStub = sinon.stub(download, 'callCore').resolves();
             rangerParseStub = sinon.stub(ranger, 'parse');
             rangerParseStub.withArgs('120').returns([{
                 start: 120
@@ -34,7 +35,7 @@ describe('download', function() {
         });
 
         afterEach(function() {
-            download.downloadAsync.restore();
+            download.callCore.restore();
             download.printProgress.restore();
             ranger.parse.restore();
         });
@@ -44,7 +45,7 @@ describe('download', function() {
             download.parseArgs(args, options)
             .catch(function(error) {
                 expect(error.message).to.equal('no series was specified');
-                expect(downloadAsyncStub.callCount).to.equal(0);
+                expect(callCoreStub.callCount).to.equal(0);
                 done();
             })
             .catch(done);
@@ -55,7 +56,7 @@ describe('download', function() {
             download.parseArgs(args, {})
             .catch(function(error) {
                 expect(error.message).to.equal('no plugin was specified');
-                expect(downloadAsyncStub.callCount).to.equal(0);
+                expect(callCoreStub.callCount).to.equal(0);
                 done();
             })
             .catch(done);
@@ -66,33 +67,33 @@ describe('download', function() {
             download.parseArgs(args)
             .catch(function(error) {
                 expect(error.message).to.equal('no plugin was specified');
-                expect(downloadAsyncStub.callCount).to.equal(0);
+                expect(callCoreStub.callCount).to.equal(0);
                 done();
             })
             .catch(done);
         });
 
-        it('should reject when downloadAsync fails', function(done) {
+        it('should reject when callCore fails', function(done) {
             const args = mockArgs('series1 120');
-            const expectedError = new Error('some error with downloadAsync');
-            download.downloadAsync.restore();
-            downloadAsyncStub = sinon.stub(download, 'downloadAsync').rejects(expectedError);
+            const expectedError = new Error('some error with callCore');
+            download.callCore.restore();
+            callCoreStub = sinon.stub(download, 'callCore').rejects(expectedError);
 
             download.parseArgs(args, options)
             .catch(function(error) {
-                expect(downloadAsyncStub.callCount).to.equal(1);
+                expect(callCoreStub.callCount).to.equal(1);
                 expect(error.message).to.deep.equal(expectedError.message);
                 done();
             })
             .catch(done);
         });
 
-        it('should call downloadAsync with a job and parsed chapter range', function(done) {
+        it('should call callCore with a job and parsed chapter range', function(done) {
             const args = mockArgs('series1 120 series2 100:140');
             download.parseArgs(args, options)
             .then(function() {
-                expect(downloadAsyncStub.callCount).to.equal(1);
-                const calledArgs = downloadAsyncStub.getCall(0).args;
+                expect(callCoreStub.callCount).to.equal(1);
+                const calledArgs = callCoreStub.getCall(0).args;
                 expect(calledArgs[0]).to.deep.equal([{
                     plugin: 'some-plugin',
                     series: 'series1',
@@ -113,12 +114,12 @@ describe('download', function() {
             .catch(done);
         });
 
-        it('should call downloadAsync with a job and parsed chapter range', function(done) {
+        it('should call callCore with a job and parsed chapter range', function(done) {
             const args = mockArgs('series1 120 series2 100:140');
             download.parseArgs(args, options)
             .then(function() {
-                expect(downloadAsyncStub.callCount).to.equal(1);
-                const calledArgs = downloadAsyncStub.getCall(0).args;
+                expect(callCoreStub.callCount).to.equal(1);
+                const calledArgs = callCoreStub.getCall(0).args;
                 expect(calledArgs[0]).to.deep.equal([{
                     plugin: 'some-plugin',
                     series: 'series1',
@@ -139,12 +140,12 @@ describe('download', function() {
             .catch(done);
         });
 
-        it('should call downloadAsync with download.printProgress, bound with the options', function(done) {
+        it('should call callCore with download.printProgress, bound with the options', function(done) {
             const args = mockArgs('series1 120 series2 100:140');
             download.parseArgs(args, options)
             .then(function() {
-                expect(downloadAsyncStub.callCount).to.equal(1);
-                const printProgress = downloadAsyncStub.getCall(0).args[2];
+                expect(callCoreStub.callCount).to.equal(1);
+                const printProgress = callCoreStub.getCall(0).args[2];
                 expect(printProgress).to.exist;
 
                 // Check if it was bound to the options
@@ -163,7 +164,7 @@ describe('download', function() {
             options.name = 'some-name';
             download.parseArgs(args, options)
             .then(function() {
-                const calledArgs = downloadAsyncStub.getCall(0).args;
+                const calledArgs = callCoreStub.getCall(0).args;
                 expect(calledArgs[0][0].name).to.equal('some-name');
                 done();
             })
@@ -176,7 +177,7 @@ describe('download', function() {
             download.parseArgs(args, options)
             .catch(function(error) {
                 expect(error.message).to.equal('"name" can not be specified when targetting multiple series');
-                expect(downloadAsyncStub.callCount).to.equal(0);
+                expect(callCoreStub.callCount).to.equal(0);
                 done();
             })
             .catch(done);
@@ -187,7 +188,7 @@ describe('download', function() {
             download.parseArgs(args, options)
             .catch(function(error) {
                 expect(error.message).to.equal('no chapters were specified for "series2"');
-                expect(downloadAsyncStub.callCount).to.equal(0);
+                expect(callCoreStub.callCount).to.equal(0);
                 done();
             })
             .catch(done);
@@ -263,6 +264,79 @@ describe('download', function() {
             download.printProgress(options, null, 'some-unknown-type', job);
             expect(logErrorStub.callCount).to.equal(0);
             expect(logStub.callCount).to.equal(0);
+        });
+    });
+
+    describe('callCore', function() {
+        let coreStub, progressStub;
+        let options, jobs, errorContent, resultContent;
+
+        beforeEach(function() {
+            coreStub = sinon.stub(core.downloader, 'download', function(a, b, cb) {
+                return cb(errorContent, resultContent);
+            });
+            progressStub = sinon.stub();
+            options = {
+                verbose: 'normal'
+            };
+            jobs = [{
+                name: 'some-name',
+                chapter: '123'
+            }];
+            errorContent = null;
+            resultContent = 'some-result';
+        });
+
+        afterEach(function() {
+            core.downloader.download.restore();
+        });
+
+        it('should return a Promise', function() {
+            const call = download.callCore(jobs, options, progressStub);
+            expect(call.then).to.be.a('function');
+        });
+
+        it('should call manganese.downloader.download', function(done) {
+            download.callCore(jobs, options, progressStub)
+            .then(function() {
+                expect(coreStub.callCount).to.equal(1);
+                const args = coreStub.getCall(0).args;
+                expect(args[0]).to.equal(jobs);
+                expect(args[1]).to.equal(options);
+                expect(args[3]).to.equal(progressStub);
+                done();
+            })
+            .catch(done);
+        });
+
+        it('should reject when manganese.downloader.download fails', function(done) {
+            errorContent = new Error('some error with download');
+            download.callCore(jobs, options, progressStub)
+            .catch(function(error) {
+                expect(error.message).to.equal(errorContent.message);
+                done();
+            })
+            .catch(done);
+        });
+
+        it('should resolve to the result of manganese.downloader.download', function(done) {
+            download.callCore(jobs, options, progressStub)
+            .then(function(result) {
+                expect(result).to.equal('some-result');
+                done();
+            })
+            .catch(done);
+        });
+
+        it('should have a default progress callback', function(done) {
+            download.callCore(jobs, options)
+            .then(function() {
+                expect(coreStub.callCount).to.equal(1);
+                const progressCb = coreStub.getCall(0).args[3];
+                expect(progressCb).to.be.a('function');
+                done();
+            })
+            .catch(done);
         });
     });
 });
