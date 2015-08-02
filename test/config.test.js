@@ -49,7 +49,7 @@ describe('config', function() {
             .then(function() {
                 expect(osenvStub.callCount).to.equal(1);
                 expect(fsStub.callCount).to.equal(1);
-                expect(fsStub.getCall(0).args[0]).to.equal('/some/path/.manganese/config.json');
+                expect(fsStub.getCall(0).args[0]).to.equal('/some/path/.manganese-cli/config.json');
                 done();
             })
             .catch(done);

@@ -5,21 +5,30 @@ import {expect} from 'chai';
 import 'sinon-as-promised';
 
 import * as cli from '../lib/cli';
+import * as config from '../lib/config';
 import {mockArgsForDispatch} from './utils';
 
 describe('cli', function() {
 
     describe('dispatch', function() {
-        let downloadStub, printErrorStub;
+        let downloadStub, printErrorStub, configStub;
+        let configContent;
 
         beforeEach(function() {
             downloadStub = sinon.stub(cli.subCommands.download, 'parseArgs').resolves();
             printErrorStub = sinon.stub(cli, 'printError');
+            configStub = sinon.stub(config, 'getDefaultConfig', function() {
+                return Promise.resolve(configContent);
+            });
+            configContent = {
+                'some-config-key': 'some-config-value'
+            };
         });
 
         afterEach(function() {
             cli.subCommands.download.parseArgs.restore();
             cli.printError.restore();
+            config.getDefaultConfig.restore();
         });
 
         it('should print an error when no sub-command is specified', function (done) {
@@ -37,7 +46,7 @@ describe('cli', function() {
 
         it('should print an error when the sub-command does not exist', function (done) {
             const args = mockArgsForDispatch('unknown-command with some arguments');
-            let expectedError = 'unknown-command is not a manganese command. See \'manganese --help\'';
+            const expectedError = 'unknown-command is not a manganese command. See \'manganese --help\'';
             cli.dispatch(args)
             .catch(function(error) {
                 expect(error.message).to.equal(expectedError);
@@ -50,8 +59,9 @@ describe('cli', function() {
 
         it('should dispatch to existing subcommand', function(done) {
             const args = mockArgsForDispatch('download series1 --plugin some-plugin');
-            cli.dispatch(args).then(function() {
-                let calledArgs = downloadStub.getCall(0).args;
+            cli.dispatch(args)
+            .then(function() {
+                const calledArgs = downloadStub.getCall(0).args;
                 expect(calledArgs[0]).to.deep.equal(['series1']);
                 expect(calledArgs[1].plugin).to.equal('some-plugin');
                 done();
@@ -61,20 +71,21 @@ describe('cli', function() {
 
         it('should not interpret numbers', function(done) {
             const args = mockArgsForDispatch('download series1 120');
-            cli.dispatch(args).then(function() {
-                let calledArgs = downloadStub.getCall(0).args;
+            cli.dispatch(args)
+            .then(function() {
+                const calledArgs = downloadStub.getCall(0).args;
                 expect(calledArgs[0]).to.deep.equal(['series1', '120']);
                 done();
             })
             .catch(done);
         });
 
-
         it('should have default values for the config', function(done) {
             const args = mockArgsForDispatch('download series1 120');
-            cli.dispatch(args).then(function() {
-                let options = downloadStub.getCall(0).args[1];
-                expect(options.destFolder).to.be.a('string');
+            cli.dispatch(args)
+            .then(function() {
+                const options = downloadStub.getCall(0).args[1];
+                expect(options.destFolder).to.match(/manga$/i);
                 done();
             })
             .catch(done);
@@ -82,10 +93,37 @@ describe('cli', function() {
 
         it('should have aliases for the config', function(done) {
             const args = mockArgsForDispatch('download series1 120 -n name1 -p plugin1');
-            cli.dispatch(args).then(function() {
-                let options = downloadStub.getCall(0).args[1];
+            cli.dispatch(args)
+            .then(function() {
+                const options = downloadStub.getCall(0).args[1];
                 expect(options.name).to.equal('name1');
                 expect(options.plugin).to.equal('plugin1');
+                done();
+            })
+            .catch(done);
+        });
+
+        it('should add options from the configuration file', function(done) {
+            const args = mockArgsForDispatch('download series1 120');
+            cli.dispatch(args)
+            .then(function() {
+                expect(configStub.callCount).to.equal(1);
+                expect(configStub.getCall(0).args).to.be.an('array').of.length(1);
+                expect(configStub.getCall(0).args[0]).to.deep.equal({});
+                const options = downloadStub.getCall(0).args[1];
+                expect(options['some-config-key']).to.equal('some-config-value');
+                done();
+            })
+            .catch(done);
+        });
+
+        it('should have configuration file override default values', function(done) {
+            configContent.destFolder = '/some/config/path';
+            const args = mockArgsForDispatch('download series1 120');
+            cli.dispatch(args)
+            .then(function() {
+                const options = downloadStub.getCall(0).args[1];
+                expect(options.destFolder).to.equal('/some/config/path');
                 done();
             })
             .catch(done);
