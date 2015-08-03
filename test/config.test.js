@@ -11,6 +11,8 @@ import sinon from 'sinon';
 import * as config from '../lib/config';
 import * as logging from '../lib/logging';
 
+import {mockArgs} from './utils';
+
 describe('config', function() {
     describe('getDefaultConfig', function() {
         let fsStub, osenvStub, logStub, logErrorStub;
@@ -104,6 +106,176 @@ describe('config', function() {
                 expect(argsLog[0]).to.deep.equal(options);
                 expect(argsLog[1].level).to.equal('debug');
                 expect(argsLog[1].message).to.equal(resultContent);
+                done();
+            })
+            .catch(done);
+        });
+    });
+
+    describe('parseArgs', function() {
+        let fsWriteStub, getDefaultConfigStub, osenvStub;
+        let options;
+
+        beforeEach(function() {
+            fsWriteStub = sinon.stub(fs, 'writeFile');
+            fsWriteStub.yields();
+            getDefaultConfigStub = sinon.stub(config, 'getDefaultConfig');
+            getDefaultConfigStub.resolves({
+                key: 'value'
+            });
+            osenvStub = sinon.stub(osenv, 'home').returns('/some/path');
+            options = {};
+        });
+
+        afterEach(function() {
+            fs.writeFile.restore();
+            config.getDefaultConfig.restore();
+            osenv.home.restore();
+        });
+
+        it('should return a Promise', function() {
+            const args = mockArgs('someKey=someValue');
+            expect(config.parseArgs(args, options).then).to.be.a('function');
+        });
+
+        it('should reject if args is empty', function(done) {
+            const args = [];
+            config.parseArgs(args, options)
+            .catch(function(error) {
+                expect(error.message).to.equal(
+                    'expected at least one config key-value pair like key=value');
+                expect(getDefaultConfigStub.callCount).to.equal(0);
+                expect(fsWriteStub.callCount).to.equal(0);
+                done();
+            })
+            .catch(done);
+        });
+
+        it('should reject if args can not be parsed as key value pairs (a=)', function(done) {
+            const args = mockArgs('someKey=');
+            config.parseArgs(args, options)
+            .catch(function(error) {
+                expect(error.message).to.equal('expected key-value pairs like key=value');
+                expect(getDefaultConfigStub.callCount).to.equal(0);
+                expect(fsWriteStub.callCount).to.equal(0);
+                done();
+            })
+            .catch(done);
+        });
+
+        it('should reject if args can not be parsed as key value pairs (a b)', function(done) {
+            const args = mockArgs('someKey someValue');
+            config.parseArgs(args, options)
+            .catch(function(error) {
+                expect(error.message).to.equal('expected key-value pairs like key=value');
+                expect(getDefaultConfigStub.callCount).to.equal(0);
+                expect(fsWriteStub.callCount).to.equal(0);
+                done();
+            })
+            .catch(done);
+        });
+
+        it('should reject if args can not be parsed as key value pairs (=b)', function(done) {
+            const args = mockArgs('=someValue');
+            config.parseArgs(args, options)
+            .catch(function(error) {
+                expect(error.message).to.equal('expected key-value pairs like key=value');
+                expect(getDefaultConfigStub.callCount).to.equal(0);
+                expect(fsWriteStub.callCount).to.equal(0);
+                done();
+            })
+            .catch(done);
+        });
+
+        it('should get default config', function(done) {
+            const args = mockArgs('someKey=someValue');
+            config.parseArgs(args, options)
+            .then(function() {
+                expect(getDefaultConfigStub.callCount).to.equal(1);
+                done();
+            })
+            .catch(done);
+        });
+
+        it('should reject if reading configuration file fails', function(done) {
+            const args = mockArgs('someKey=someValue');
+            const expectedError = new Error('some error on file read');
+            getDefaultConfigStub.onFirstCall().rejects(expectedError);
+
+            config.parseArgs(args, options)
+            .catch(function(error) {
+                expect(getDefaultConfigStub.callCount).to.equal(1);
+                expect(fsWriteStub.callCount).to.equal(0);
+                expect(error.message).to.equal(expectedError.message);
+                done();
+            })
+            .catch(done);
+        });
+
+        it('should write merged config to configuration file', function(done) {
+            const args = mockArgs('someKey=someValue');
+            config.parseArgs(args, options)
+            .then(function() {
+                expect(fsWriteStub.callCount).to.equal(1);
+                const fsWriteArgs = fsWriteStub.getCall(0).args;
+                expect(osenvStub.callCount).to.equal(1);
+                expect(fsWriteArgs[0]).to.equal('/some/path/.manganese-cli/config.json');
+                const expectedConfig = {
+                    key: 'value',
+                    someKey: 'someValue'
+                };
+                expect(fsWriteArgs[1]).to.deep.equal(JSON.stringify(expectedConfig, null, 4));
+                done();
+            })
+            .catch(done);
+        });
+
+        it('should reject if writing to configuration file fails', function(done) {
+            const args = mockArgs('someKey=someValue');
+            const expectedError = new Error('some error on file write');
+            fsWriteStub.onFirstCall().yields(expectedError);
+
+            config.parseArgs(args, options)
+            .catch(function(error) {
+                expect(fsWriteStub.callCount).to.equal(1);
+                expect(error.message).to.equal(expectedError.message);
+                done();
+            })
+            .catch(done);
+        });
+
+        it('should resolve merged config', function(done) {
+            const args = mockArgs('someKey=someValue');
+            config.parseArgs(args, options)
+            .then(function(result) {
+                expect(result).to.deep.equal({
+                    key: 'value',
+                    someKey: 'someValue'
+                });
+                done();
+            })
+            .catch(done);
+        });
+
+        it('should have new keys override old keys', function(done) {
+            const args = mockArgs('key=other-value');
+            config.parseArgs(args, options)
+            .then(function(result) {
+                expect(result).to.deep.equal({
+                    key: 'other-value'
+                });
+                done();
+            })
+            .catch(done);
+        });
+
+        it('should handle arrays', function(done) {
+            const args = mockArgs('key=[value1,value2]');
+            config.parseArgs(args, options)
+            .then(function(result) {
+                expect(result).to.deep.equal({
+                    key: ['value1', 'value2']
+                });
                 done();
             })
             .catch(done);
