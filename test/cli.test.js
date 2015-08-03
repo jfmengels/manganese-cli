@@ -148,6 +148,19 @@ describe('cli', function() {
             })
             .catch(done);
         });
+
+        it('should have some options set as booleans', function(done) {
+            const args = mockArgsForDispatch('download --location Naruto');
+            cli.dispatch(args)
+            .then(function() {
+                const passedArgs = downloadStub.getCall(0).args[0];
+                const options = downloadStub.getCall(0).args[1];
+                expect(passedArgs).to.deep.equal(['Naruto']);
+                expect(options.location).to.equal(true);
+                done();
+            })
+            .catch(done);
+        });
     });
 
     describe('printError', function() {
