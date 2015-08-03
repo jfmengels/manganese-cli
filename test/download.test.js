@@ -200,15 +200,15 @@ describe('download', function() {
         let options, job;
 
         beforeEach(function() {
-             logStub = sinon.stub(logging, 'log');
-             logErrorStub = sinon.stub(logging, 'logError');
-             options = {
+            logStub = sinon.stub(logging, 'log');
+            logErrorStub = sinon.stub(logging, 'logError');
+            options = {
                 verbose: 'normal'
-             };
-             job = {
+            };
+            job = {
                 name: 'some-name',
                 chapter: '123'
-             };
+            };
         });
 
         afterEach(function() {

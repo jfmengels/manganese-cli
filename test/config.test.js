@@ -16,7 +16,7 @@ describe('config', function() {
         let fsStub, osenvStub, logStub, logErrorStub;
         let errorContent, baseResultContent, resultContent, options;
 
-		beforeEach(function() {
+        beforeEach(function() {
             osenvStub = sinon.stub(osenv, 'home').returns('/some/path');
             fsStub = sinon.stub(fs, 'readFile', function(file, cb) {
                 return cb(errorContent, resultContent);
@@ -31,18 +31,18 @@ describe('config', function() {
             options = {
                 verbose: 'debug'
             };
-		});
+        });
 
-		afterEach(function() {
-			osenv.home.restore();
+        afterEach(function() {
+            osenv.home.restore();
             fs.readFile.restore();
             logging.log.restore();
             logging.logError.restore();
-		});
+        });
 
-		it('should return a Promise', function() {
+        it('should return a Promise', function() {
             expect(config.getDefaultConfig(options).then).to.be.a('function');
-		});
+        });
 
         it('should call fs.readFile', function(done) {
             config.getDefaultConfig(options)

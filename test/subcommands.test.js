@@ -8,7 +8,7 @@ import * as install from '../lib/install';
 
 describe('cli', function() {
     describe('subcommands', function() {
-		it('should have subcommand download', function() {
+        it('should have subcommand download', function() {
             expect(cli.subCommands.download).to.equal(download);
         });
 

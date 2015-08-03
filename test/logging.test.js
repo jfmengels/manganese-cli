@@ -11,8 +11,8 @@ describe('logging', function() {
         let options, message, level;
 
         beforeEach(function() {
-             consoleLogStub = sinon.stub(console, 'log');
-             options = {
+            consoleLogStub = sinon.stub(console, 'log');
+            options = {
                 verbose: 'all'
             };
             message = 'some-message';
@@ -85,8 +85,8 @@ describe('logging', function() {
         let options, message;
 
         beforeEach(function() {
-             consoleErrorStub = sinon.stub(console, 'error');
-             options = {
+            consoleErrorStub = sinon.stub(console, 'error');
+            options = {
                 verbose: 'all'
             };
             message = 'some-message';
