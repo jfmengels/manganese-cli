@@ -5,10 +5,12 @@
     "node": true
   },
   "rules": {
+    "comma-style": [2, "last"],
+    "eol-last": [0],
     "indent": 2,
     "quotes": [2, "single"],
-    "eol-last": [0],
     "no-mixed-requires": [0],
-    "no-underscore-dangle": [0]
+    "no-underscore-dangle": [0],
+    "strict": [2, "global"]
   }
 }
