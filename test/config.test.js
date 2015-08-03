@@ -371,5 +371,25 @@ describe('config', function() {
             })
             .catch(done);
         });
+
+        it('should remove values from default config if value is "default"', function(done) {
+            const args = mockArgs('key=default someKey=default');
+            config.updateDefaultConfig(args, options)
+            .then(function(result) {
+                expect(result).to.deep.equal({});
+                done();
+            })
+            .catch(done);
+        });
+
+        it('should remove values from default config if value is "auto"', function(done) {
+            const args = mockArgs('key=auto someKey=auto');
+            config.updateDefaultConfig(args, options)
+            .then(function(result) {
+                expect(result).to.deep.equal({});
+                done();
+            })
+            .catch(done);
+        });
     });
 });
