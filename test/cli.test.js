@@ -6,6 +6,8 @@ import 'sinon-as-promised';
 
 import * as cli from '../lib/cli';
 import * as config from '../lib/config';
+import * as download from '../lib/download';
+import * as install from '../lib/install';
 import {mockArgsForDispatch} from './utils';
 
 describe('cli', function() {
@@ -164,6 +166,20 @@ describe('cli', function() {
             cli.printError(new Error(expectedError));
             expect(consoleErrorStub.callCount).to.equal(1);
             expect(consoleErrorStub.getCall(0).args[0]).to.contain(expectedError);
+        });
+    });
+
+    describe('subcommands', function() {
+        it('should have subcommand download', function() {
+            expect(cli.subCommands.download).to.equal(download);
+        });
+
+        it('should have subcommand install', function() {
+            expect(cli.subCommands.install).to.equal(install);
+        });
+
+        it('should have subcommand config', function() {
+            expect(cli.subCommands.config).to.equal(config);
         });
     });
 });
