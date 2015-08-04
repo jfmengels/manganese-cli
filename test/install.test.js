@@ -5,6 +5,7 @@ import sinon from 'sinon';
 import core from 'manganese';
 
 import * as install from '../lib/install';
+import * as config from '../lib/config';
 
 describe('install', function() {
     describe('installCore', function() {
@@ -59,7 +60,7 @@ describe('install', function() {
     });
 
     describe('parseArgs', function () {
-        let installCoreStub;
+        let installCoreStub, configAddPluginsStub;
         let args;
 
         beforeEach(function() {
@@ -67,14 +68,36 @@ describe('install', function() {
 
             installCoreStub = sinon.stub(install, 'installCore');
             installCoreStub.resolves(args);
+
+            configAddPluginsStub = sinon.stub(config, 'addPlugins');
+            configAddPluginsStub.resolves();
         });
 
         afterEach(function() {
             install.installCore.restore();
+            config.addPlugins.restore();
         });
 
         it('should return a Promise', function() {
             expect(install.parseArgs(args).then).to.be.a('function');
+        });
+
+        it('should reject when there args is not defined', function(done) {
+            install.parseArgs()
+            .catch(function(error) {
+                expect(error.message).to.equal('no plugins were specified');
+                done();
+            })
+            .catch(done);
+        });
+
+        it('should reject when there args is an empty array', function(done) {
+            install.parseArgs([])
+            .catch(function(error) {
+                expect(error.message).to.equal('no plugins were specified');
+                done();
+            })
+            .catch(done);
         });
 
         it('should call install.installCore', function(done) {
@@ -93,6 +116,18 @@ describe('install', function() {
             install.parseArgs(args)
             .catch(function(error) {
                 expect(error.message).to.equal(expectedError.message);
+                done();
+            })
+            .catch(done);
+        });
+
+        it('should save the newly installed plugins in the default config', function(done) {
+            install.parseArgs(args)
+            .then(function() {
+                expect(configAddPluginsStub.callCount).to.equal(1);
+                const addPluginsArgs = configAddPluginsStub.getCall(0).args;
+                expect(addPluginsArgs).to.have.length(1);
+                expect(addPluginsArgs[0]).to.deep.equal(args);
                 done();
             })
             .catch(done);

@@ -444,4 +444,133 @@ describe('config', function() {
             .catch(done);
         });
     });
+
+    describe('addPlugins', function() {
+        let configSaveStub, getDefaultConfigStub;
+        let plugins, options, getDefaultConfigContent, configSaveStubError;
+
+        beforeEach(function() {
+            plugins = ['some-plugin', 'some-other-plugin'];
+            options = {};
+            configSaveStubError = null;
+            getDefaultConfigContent = {
+                key: 'value',
+                installedPlugins: ['some-existing-plugin']
+            };
+
+            configSaveStub = sinon.stub(config, 'save', function(data) {
+                if (configSaveStubError) {
+                    return Promise.reject(configSaveStubError);
+                }
+                return Promise.resolve(data);
+            });
+
+            getDefaultConfigStub = sinon.stub(config, 'getDefaultConfig');
+            getDefaultConfigStub.resolves(getDefaultConfigContent);
+        });
+
+        afterEach(function() {
+            config.save.restore();
+            config.getDefaultConfig.restore();
+        });
+
+        it('should return a Promise', function() {
+            expect(config.addPlugins(plugins, options).then).to.be.a('function');
+        });
+
+        it('should get default config', function(done) {
+            config.addPlugins(plugins, options)
+            .then(function() {
+                expect(getDefaultConfigStub.callCount).to.equal(1);
+                const args = getDefaultConfigStub.getCall(0).args;
+                expect(args).to.have.length(1);
+                expect(args[0]).to.deep.equal(options);
+                done();
+            })
+            .catch(done);
+        });
+
+        it('should reject if getting default config fails', function(done) {
+            const expectedError = new Error('some error with getting default config');
+            getDefaultConfigStub.onFirstCall().rejects(expectedError);
+
+            config.addPlugins(plugins, options)
+            .catch(function(error) {
+                expect(getDefaultConfigStub.callCount).to.equal(1);
+                expect(error.message).to.equal(expectedError.message);
+                done();
+            })
+            .catch(done);
+        });
+
+        it('should save config with added plugins', function(done) {
+            config.addPlugins(plugins, options)
+            .then(function() {
+                const expectedPlugins = ['some-existing-plugin', 'some-plugin', 'some-other-plugin'];
+                expect(configSaveStub.callCount).to.equal(1);
+                const args = configSaveStub.getCall(0).args;
+                expect(args).to.have.length(1);
+                expect(args[0].installedPlugins.sort()).to.deep.equal(expectedPlugins.sort());
+                done();
+            })
+            .catch(done);
+        });
+
+        it('should not have modified anything except the installedPlugins field', function(done) {
+            config.addPlugins(plugins, options)
+            .then(function() {
+                getDefaultConfigContent.installedPlugins = ['some-existing-plugin', 'some-plugin', 'some-other-plugin'];
+                const savedConfig = configSaveStub.getCall(0).args[0];
+                expect(savedConfig).to.deep.equal(getDefaultConfigContent);
+                done();
+            })
+            .catch(done);
+        });
+
+        it('should add installedPlugins field is it does not yet exist', function(done) {
+            delete getDefaultConfigContent.installedPlugins;
+            config.addPlugins(plugins, getDefaultConfigContent)
+            .then(function() {
+                const expectedPlugins = ['some-plugin', 'some-other-plugin'];
+                const savedConfig = configSaveStub.getCall(0).args[0];
+                expect(savedConfig.installedPlugins.sort()).to.deep.equal(expectedPlugins.sort());
+                done();
+            })
+            .catch(done);
+        });
+
+        it('should not have duplicate plugins', function(done) {
+            plugins.push('some-existing-plugin');
+            config.addPlugins(plugins, options)
+            .then(function() {
+                const expectedPlugins = ['some-existing-plugin', 'some-plugin', 'some-other-plugin'];
+                const savedConfig = configSaveStub.getCall(0).args[0];
+                expect(savedConfig.installedPlugins.sort()).to.deep.equal(expectedPlugins.sort());
+                done();
+            })
+            .catch(done);
+        });
+
+        it('should reject if saving config fails', function(done) {
+            configSaveStubError = new Error('some error with saving config');
+
+            config.addPlugins(plugins, options)
+            .catch(function(error) {
+                expect(configSaveStub.callCount).to.equal(1);
+                expect(error.message).to.equal(configSaveStubError.message);
+                done();
+            })
+            .catch(done);
+        });
+
+        it('should resolve to the updated default config', function(done) {
+            config.addPlugins(plugins, options)
+            .then(function(result) {
+                getDefaultConfigContent.installedPlugins = ['some-existing-plugin', 'some-plugin', 'some-other-plugin'];
+                expect(result).to.deep.equal(getDefaultConfigContent);
+                done();
+            })
+            .catch(done);
+        });
+    });
 });
