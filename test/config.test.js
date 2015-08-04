@@ -204,24 +204,27 @@ describe('config', function() {
     });
 
     describe('updateDefaultConfig', function() {
-        let fsWriteStub, getDefaultConfigStub, locationStub;
-        let options;
+        let configSaveStub, getDefaultConfigStub;
+        let options, configSaveStubError;
 
         beforeEach(function() {
-            fsWriteStub = sinon.stub(fs, 'writeFile');
-            fsWriteStub.yields();
+            configSaveStub = sinon.stub(config, 'save', function(data) {
+                if (configSaveStubError) {
+                    return Promise.reject(configSaveStubError);
+                }
+                return Promise.resolve(data);
+            });
             getDefaultConfigStub = sinon.stub(config, 'getDefaultConfig');
             getDefaultConfigStub.resolves({
                 key: 'value'
             });
-            locationStub = sinon.stub(config, 'location').returns('/some/path/.manganese-cli/config.json');
             options = {};
+            configSaveStubError = null;
         });
 
         afterEach(function() {
-            fs.writeFile.restore();
+            config.save.restore();
             config.getDefaultConfig.restore();
-            config.location.restore();
         });
 
         it('should return a Promise', function() {
@@ -235,8 +238,7 @@ describe('config', function() {
             .catch(function(error) {
                 expect(error.message).to.equal(
                     'expected at least one config key-value pair like key=value');
-                expect(getDefaultConfigStub.callCount).to.equal(0);
-                expect(fsWriteStub.callCount).to.equal(0);
+                expect(configSaveStub.callCount).to.equal(0);
                 done();
             })
             .catch(done);
@@ -247,8 +249,7 @@ describe('config', function() {
             config.updateDefaultConfig(args, options)
             .catch(function(error) {
                 expect(error.message).to.equal('expected key-value pairs like key=value');
-                expect(getDefaultConfigStub.callCount).to.equal(0);
-                expect(fsWriteStub.callCount).to.equal(0);
+                expect(configSaveStub.callCount).to.equal(0);
                 done();
             })
             .catch(done);
@@ -259,8 +260,7 @@ describe('config', function() {
             config.updateDefaultConfig(args, options)
             .catch(function(error) {
                 expect(error.message).to.equal('expected key-value pairs like key=value');
-                expect(getDefaultConfigStub.callCount).to.equal(0);
-                expect(fsWriteStub.callCount).to.equal(0);
+                expect(configSaveStub.callCount).to.equal(0);
                 done();
             })
             .catch(done);
@@ -271,8 +271,7 @@ describe('config', function() {
             config.updateDefaultConfig(args, options)
             .catch(function(error) {
                 expect(error.message).to.equal('expected key-value pairs like key=value');
-                expect(getDefaultConfigStub.callCount).to.equal(0);
-                expect(fsWriteStub.callCount).to.equal(0);
+                expect(configSaveStub.callCount).to.equal(0);
                 done();
             })
             .catch(done);
@@ -296,40 +295,34 @@ describe('config', function() {
             config.updateDefaultConfig(args, options)
             .catch(function(error) {
                 expect(getDefaultConfigStub.callCount).to.equal(1);
-                expect(fsWriteStub.callCount).to.equal(0);
+                expect(configSaveStub.callCount).to.equal(0);
                 expect(error.message).to.equal(expectedError.message);
                 done();
             })
             .catch(done);
         });
 
-        it('should write merged config to configuration file', function(done) {
+        it('should save merged config to configuration file', function(done) {
             const args = mockArgs('someKey=someValue');
             config.updateDefaultConfig(args, options)
             .then(function() {
-                expect(fsWriteStub.callCount).to.equal(1);
-                const fsWriteArgs = fsWriteStub.getCall(0).args;
-                expect(locationStub.callCount).to.equal(1);
-                expect(fsWriteArgs[0]).to.equal('/some/path/.manganese-cli/config.json');
-                const expectedConfig = {
+                expect(configSaveStub.callCount).to.equal(1);
+                expect(configSaveStub.getCall(0).args[0]).to.deep.equal({
                     key: 'value',
                     someKey: 'someValue'
-                };
-                expect(fsWriteArgs[1]).to.deep.equal(JSON.stringify(expectedConfig, null, 4));
+                });
                 done();
             })
             .catch(done);
         });
 
-        it('should reject if writing to configuration file fails', function(done) {
+        it('should reject if saving configuration file fails', function(done) {
             const args = mockArgs('someKey=someValue');
-            const expectedError = new Error('some error on file write');
-            fsWriteStub.onFirstCall().yields(expectedError);
-
+            configSaveStubError = new Error('some error on file save');
             config.updateDefaultConfig(args, options)
             .catch(function(error) {
-                expect(fsWriteStub.callCount).to.equal(1);
-                expect(error.message).to.equal(expectedError.message);
+                expect(configSaveStub.callCount).to.equal(1);
+                expect(error.message).to.equal(configSaveStubError.message);
                 done();
             })
             .catch(done);
@@ -387,6 +380,65 @@ describe('config', function() {
             config.updateDefaultConfig(args, options)
             .then(function(result) {
                 expect(result).to.deep.equal({});
+                done();
+            })
+            .catch(done);
+        });
+    });
+
+    describe('save', function() {
+        let fsWriteStub, locationStub;
+        let options;
+
+        beforeEach(function() {
+            fsWriteStub = sinon.stub(fs, 'writeFile');
+            fsWriteStub.yields();
+
+            locationStub = sinon.stub(config, 'location');
+            locationStub.returns('/some/path/.manganese-cli/config.json');
+
+            options = {};
+        });
+
+        afterEach(function() {
+            fs.writeFile.restore();
+            config.location.restore();
+        });
+
+        it('should return a Promise', function() {
+            expect(config.save(options).then).to.be.a('function');
+        });
+
+        it('should write config to configuration file', function(done) {
+            config.save(options)
+            .then(function() {
+                expect(fsWriteStub.callCount).to.equal(1);
+                const fsWriteArgs = fsWriteStub.getCall(0).args;
+                expect(locationStub.callCount).to.equal(1);
+                expect(fsWriteArgs[0]).to.equal('/some/path/.manganese-cli/config.json');
+                expect(fsWriteArgs[1]).to.deep.equal(JSON.stringify(options, null, 4));
+                done();
+            })
+            .catch(done);
+        });
+
+        it('should reject if writing to configuration file fails', function(done) {
+            const expectedError = new Error('some error on file write');
+            fsWriteStub.onFirstCall().yields(expectedError);
+
+            config.save(options)
+            .catch(function(error) {
+                expect(fsWriteStub.callCount).to.equal(1);
+                expect(error.message).to.equal(expectedError.message);
+                done();
+            })
+            .catch(done);
+        });
+
+        it('should resolve to the config file', function(done) {
+            config.save(options)
+            .then(function(result) {
+                expect(result).to.deep.equal(options);
                 done();
             })
             .catch(done);
